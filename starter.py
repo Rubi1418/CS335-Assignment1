@@ -12,18 +12,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv("MY_API_KEY")
-if not API_KEY:
-    raise ValueError("API key not found. Did you copy .env.example to .env?")
+API_KEY = None
 
 # TODO: Replace with your API's base URL
-BASE_URL = "https://api.example.com/v1"
+BASE_URL = "https://api.open-meteo.com/v1"
 
 # update or extend per call if your API requires it
-HEADERS = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json",
-}
+
 
 
 def divider(label):
@@ -34,15 +29,22 @@ def divider(label):
 # Use for retrieving data without a request body.
 # TODO: Update url and params.
 def call_one_get():
-    divider("CALL 1 — GET Request")
+    divider("CALL 1 — New York Weather")
 
-    url = f"{BASE_URL}/resource"
-    params = {"query": "python", "limit": 5}  # TODO: update these
+    url = f"{BASE_URL}/forecast"
 
-    response = requests.get(url, headers=HEADERS, params=params)
+    params = {"latitude": 40.7128, "longitude": -74.0060, "hourly": "temperature_2m"}  # TODO: update these
+
+    response = requests.get(url, params=params)
 
     if response.status_code == 200:
-        print(json.dumps(response.json(), indent=2))
+        data = response.json()
+        print("NYC temperatures (first 5 hours):")
+        times = data["hourly"]["time"][:5]
+        temps = data["hourly"]["temperature_2m"][:5]
+
+        for t, temp in zip(times, temps):
+            print(f"{t} → {temp}°C")
     else:
         print(f"[ERROR] {response.status_code}: {response.text}")
 
@@ -51,23 +53,25 @@ def call_one_get():
 # Use for sending data to the API (e.g., a prompt or input text).
 # TODO: Update url and payload fields.
 def call_two_post():
-    divider("CALL 2 — POST Request")
+    divider("CALL 2 — Chicago Weather")
 
-    url = f"{BASE_URL}/predict"
-    payload = {
-        "input": "What is machine learning?",  # TODO: update
-        "model": "default",                    # TODO: update
-    }
+    url = f"{BASE_URL}/forecast"
+    params = {"latitude":41.8781, "longitude": -87.6298, "hourly": "temperature_2m"}
 
-    response = requests.post(url, headers=HEADERS, json=payload)
+
+
+    response = requests.get(url, params=params)
 
     if response.status_code == 200:
         data = response.json()
-        print(data.get("result", json.dumps(data, indent=2)))  # TODO: update key
-    elif response.status_code == 401:
-        print("[ERROR] 401 Unauthorized — check your API key in .env")
-    elif response.status_code == 429:
-        print("[ERROR] 429 Rate Limited — wait and retry")
+        print("Chicago temperatures (first 5 hours):")  # TODO: update key
+        times = data["hourly"]["time"][:5]
+        temps = data["hourly"]["temperature_2m"][:5]
+
+        for t, temp in zip(times, temps):
+            print(f"{t} → {temp}°C")
+
+
     else:
         print(f"[ERROR] {response.status_code}: {response.text}")
 
@@ -75,22 +79,31 @@ def call_two_post():
 # ── Call 3: Parameterized POST ────────────────────────────
 # Same as Call 2 but accepts dynamic input to show varied output.
 # TODO: Update url and payload fields.
-def call_three_parameterized(user_input: str):
-    divider(f"CALL 3 — Parameterized  |  input: '{user_input}'")
+def call_three_parameterized(city: str):
+    divider(f"CALL 3 — {city} Weather")
 
-    url = f"{BASE_URL}/predict"
-    payload = {
-        "input": user_input,  # dynamic — passed in from __main__
-        "model": "default",   # TODO: update
-    }
+    cities = { "warsaw": (52.2297, 21.0122), "miami": (25.7617, -80.1918), "los angeles": (34.0522, -118.2437),}
+    city = city.lower()
+    if city not in cities:
+        print("City not supported. Try: warsaw, miami, or los angeles")
+        return
+    lat, lon = cities[city]
 
-    response = requests.post(url, headers=HEADERS, json=payload)
+    url = f"{BASE_URL}/forecast"
+
+    params = {"latitude": lat, "longitude": lon, "hourly": "temperature_2m"}
+
+    response = requests.get(url, params=params)
 
     if response.status_code == 200:
         data = response.json()
-        print(data.get("result", json.dumps(data, indent=2)))  # TODO: update key
-    elif response.status_code == 429:
-        print("[ERROR] 429 Rate Limited — slow down and retry")
+        print(f"{city.title()} temperature (first 5 hours):")  # TODO: update key
+        times = data["hourly"]["time"][:5]
+        temps = data["hourly"]["temperature_2m"][:5]
+
+        for t, temp in zip(times, temps):
+            print(f"{t} → {temp}°C")
+
     else:
         print(f"[ERROR] {response.status_code}: {response.text}")
 
@@ -98,4 +111,5 @@ def call_three_parameterized(user_input: str):
 if __name__ == "__main__":
     call_one_get()
     call_two_post()
-    call_three_parameterized("Explain supervised learning in one sentence.")
+    call_three_parameterized("Warsaw")
+
